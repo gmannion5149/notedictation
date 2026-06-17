@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0064)file:///C:/Users/gerar/Downloads/note-dictation-generator_1.html -->
+<!-- saved from url=(0064)file:///C:/Users/gerar/Downloads/note-dictation-generator_2.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,7 +9,7 @@
 <title>Note Dictation Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
-<link href="./Note Dictation Generator_files/css2" rel="stylesheet">
+<link href="./Note Dictation Generator.html Update_files/css2" rel="stylesheet">
 <style>
   :root{
     --bg:#0E1014;--glass:rgba(32,36,45,.55);--border:rgba(255,255,255,.09);
@@ -188,11 +188,11 @@
   <div class="label">Transcript<span class="clear" id="clearBtn">clear</span></div>
   <textarea id="transcript" placeholder="Spoken words land here. Say a note type to switch, then dictate. You can also type, paste, or edit before generating."></textarea>
 
-  <button class="btn btn-led" id="formatBtn">Generate Smart Notes</button>
+  <button class="btn btn-led" id="formatBtn" disabled="">Generate Smart Notes</button>
 
-  <div class="output-card show" id="outputCard">
-    <h3 id="outTitle">Intake Note</h3>
-    <div class="note-out" id="noteOut" style="font-family: &quot;Times New Roman&quot;, Times, serif;"><div class="sum">Potential Client called regarding their 3rd Degree Gross Misdemeanor DWI (Refusal) case.</div><div class="row"><span class="lbl">Originated By:</span> GWM</div><div class="row"><span class="lbl">Assigned Attorney:</span> GWM</div><div class="row"><span class="lbl">Caller:</span> Potential Client — John Smith</div><div class="row"><span class="lbl">Location:</span> Farmington, Dakota County</div><div class="row"><span class="lbl">CDL:</span> Yes — used for commercial grain transport across state lines</div><div class="row"><span class="lbl">Testing Method:</span> Breath (Refusal)</div><div class="row"><span class="lbl">Result / Reading:</span> Refused</div><div class="row"><span class="lbl">Implied Consent Deadline:</span> TBD</div><div class="row"><span class="lbl">Details:</span></div><div class="sum">Client was stopped in Farmington for speeding. He declined to perform field sobriety tests, which led to his arrest. At the station, he refused the chemical test, resulting in a refusal charge. Client holds a CDL and uses it commercially to transport grain across state lines, making the implied consent hearing a priority.</div><div class="row"><span class="lbl">Flat Fee:</span> $5,500</div><div class="row"><span class="lbl">Payment Terms:</span> Client needs to discuss with family before retaining.</div><div class="row"><span class="lbl">Next Steps:</span></div><div class="sum">Follow up with client after he speaks with family regarding retainer.</div></div>
+  <div class="output-card" id="outputCard">
+    <h3 id="outTitle">Formatted Note</h3>
+    <div class="note-out" id="noteOut"></div>
     <div class="fb-note" id="fbNote">// auto-structured on-device · AI formatting was unavailable</div>
     <div class="copy-row">
       <button class="btn btn-led" id="copyBtn">Copy for Clio</button>
@@ -239,13 +239,16 @@ const INTAKE_SKELETON=[
 
 const OMIT_RULE="- Include a label or section ONLY if the dictation provides information for it. Omit any label or section with no information; never output a dash or an empty heading.\n";
 
-function intakePrompt(raw){
+function todayStr(){ return new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}); }
+
+function intakePrompt(raw,today){
   return "You are an intake assistant for a Minnesota criminal defense and DWI law firm. "
     +"Convert the raw intake-call dictation into a clean, structured DWI Intake Note to paste into Clio.\n\n"
+    +"The current date is "+today+".\n\n"
     +"Use this set of labels and this order as your reference:\n\n"+INTAKE_SKELETON+"\n\nRULES:\n"
     +"- Plain text only. No markdown, asterisks, or backticks.\n"+OMIT_RULE
-    +"- Always include: the opening line, \"Originated By: GWM\", and \"Assigned Attorney: GWM\" (use other initials only if stated). Keep the order shown for whichever fields are present.\n"
-    +"- The opening line states the charge if given (e.g., \"3rd Degree Gross Misdemeanor DWI\"); otherwise \"DWI\".\n"
+    +"- The opening line MUST read exactly: \"Potential Client called on "+today+" regarding their [charge] case.\" Use the charge if given (e.g., \"3rd Degree Gross Misdemeanor DWI\"); otherwise \"DWI\".\n"
+    +"- Always include the opening line, \"Originated By: GWM\", and \"Assigned Attorney: GWM\" (use other initials only if stated). Keep the order shown for whichever fields are present.\n"
     +"- Format the caller as: Potential Client \u2014 [name].\n"
     +"- Write dates as \"Month D, YYYY\" and times as \"H:MM AM/PM\".\n"
     +"- Keep the spaced em dash \" \u2014 \" connector in the Caller, CDL, Fast Track, and prior lines when present.\n"
@@ -254,39 +257,40 @@ function intakePrompt(raw){
     +"- The Details bullet is a tight, professional summary of the client's account.\n\n"
     +"RAW DICTATION:\n\"\"\""+raw+"\"\"\"";
 }
-function courtPrompt(raw){
+function courtPrompt(raw,today){
   return "You are a legal assistant for a Minnesota criminal defense and DWI attorney. "
     +"Convert the raw post-hearing dictation into a clean, structured Court Summary to paste into Clio.\n\n"
+    +"The current date is "+today+".\n\n"
     +"Follow this structure, labels, and order (one item per line):\n\n"
-    +"With [client] \u2014 [Date] [Hearing type].\n"
-    +"Attorney: GWM\nJudge: [name]\nProsecutor: [name]\n"
+    +"GWM appeared [with Client / without Client] on "+today+".\n"
+    +"Judge: [name]\nProsecutor: [name]\n"
     +"Offer:\n\u2022 [each offer term as its own bullet]\n"
     +"Details:\n\u2022 [what happened at the hearing, clean professional prose]\n"
     +"Next Court Date: [Date] \u2014 [Hearing type]\n"
     +"Notes for Paula:\n\u2022 [any instructions for the assistant]\n"
     +"Notes for Client:\n\u2022 [any message to relay to the client]\n\nRULES:\n"
     +"- Plain text only. No markdown, asterisks, or backticks.\n"+OMIT_RULE
-    +"- Always include the opening \"With ...\" line and \"Attorney: GWM\" (use other initials only if stated).\n"
-    +"- Opening line: use the client's name if given, otherwise \"client\"; date as \"Month D, YYYY\"; include the hearing type if given.\n"
-    +"- Keep the spaced em dash \" \u2014 \" in the opening line and the Next Court Date line.\n"
+    +"- The note MUST start with the opening line beginning \"GWM appeared\". Use \"with Client\" or \"without Client\" exactly as the dictation indicates; if it is not stated, write \"with Client\".\n"
+    +"- The opening line always ends with \"on "+today+".\" If the hearing type is stated, append it as: \"GWM appeared with Client on "+today+" for the [Hearing type].\"\n"
+    +"- Keep the spaced em dash \" \u2014 \" in the Next Court Date line.\n"
     +"- Write each offer term and each instruction as its own bullet beginning with \"\u2022 \".\n"
     +"- Use only stated facts; never invent names, dates, offer terms, or amounts.\n\n"
     +"RAW DICTATION:\n\"\"\""+raw+"\"\"\"";
 }
-function checkinPrompt(raw){
+function checkinPrompt(raw,today){
   return "You are a legal assistant for a Minnesota criminal defense and DWI attorney. "
     +"Convert the raw client check-in / case-review dictation into a clean, structured note to paste into Clio.\n\n"
+    +"The current date is "+today+".\n\n"
     +"Follow this structure, labels, and order (one item per line):\n\n"
-    +"[Meeting type] \u2014 [medium or location].\n"
-    +"Attorney: GWM\n"
+    +"GWM met with Client [by phone / in person / by Zoom] on "+today+".\n"
     +"Evidence & Strategy Review:\n\u2022 [discussion of evidence and strategy]\n"
     +"Offer Relayed:\n\u2022 [the offer presented to the client]\n"
     +"Client Position: [Accepted / Rejected / Undecided]\n"
     +"Attorney's Advice:\n\u2022 [the advice given]\n"
     +"Next Steps:\n\u2022 [each next step as its own bullet]\n\nRULES:\n"
     +"- Plain text only. No markdown, asterisks, or backticks.\n"+OMIT_RULE
-    +"- Always include the opening line and \"Attorney: GWM\" (use other initials only if stated).\n"
-    +"- Opening line example: \"Case review meeting \u2014 Zoom.\" Use the medium/location if stated; keep the spaced em dash \" \u2014 \" if a medium is given.\n"
+    +"- The note MUST start with the opening line beginning \"GWM met with Client\". Insert the meeting medium exactly as stated: \"by phone\", \"in person\", or \"by Zoom\". If not stated, omit the medium.\n"
+    +"- The opening line always ends with \"on "+today+".\"\n"
     +"- Use only stated facts; never invent.\n\n"
     +"RAW DICTATION:\n\"\"\""+raw+"\"\"\"";
 }
@@ -294,10 +298,10 @@ const PROMPT={intake:intakePrompt,court:courtPrompt,checkin:checkinPrompt};
 
 function cleanNarr(raw){ let d=raw.trim().replace(/\s+/g," ");
   if(d){ d=d.charAt(0).toUpperCase()+d.slice(1); if(!/[.?!]$/.test(d)) d+="."; } return d||"\u2014"; }
-function intakeFallback(raw){ return ["Potential Client called regarding their DWI case.",
+function intakeFallback(raw,today){ return ["Potential Client called on "+today+" regarding their DWI case.",
   "Originated By: GWM","Assigned Attorney: GWM","Details:","\u2022 "+cleanNarr(raw),"Next Steps:","\u2022 Follow up"].join("\n"); }
-function courtFallback(raw){ return ["Court summary.","Attorney: GWM","Details:","\u2022 "+cleanNarr(raw)].join("\n"); }
-function checkinFallback(raw){ return ["Case review meeting.","Attorney: GWM","Details:","\u2022 "+cleanNarr(raw)].join("\n"); }
+function courtFallback(raw,today){ return ["GWM appeared with Client on "+today+".","Details:","\u2022 "+cleanNarr(raw)].join("\n"); }
+function checkinFallback(raw,today){ return ["GWM met with Client on "+today+".","Details:","\u2022 "+cleanNarr(raw)].join("\n"); }
 const FALLBACK={intake:intakeFallback,court:courtFallback,checkin:checkinFallback};
 
 /* ---------- Voice triggers ---------- */
@@ -433,9 +437,10 @@ async function generate(){ const raw=ta.value.trim(); if(raw.length<3) return;
   const btn=$("formatBtn"); if(listening) stopSession();
   btn.disabled=true; btn.innerHTML='<span class="spin"></span>Generating';
   let out="",fallback=false;
-  try{ out=(await callAI(PROMPT[currentType](raw))).replace(/```/g,"").trim();
+  const today=todayStr();
+  try{ out=(await callAI(PROMPT[currentType](raw,today))).replace(/```/g,"").trim();
     if(!out) throw new Error("empty");
-  }catch(err){ out=FALLBACK[currentType](raw); fallback=true; }
+  }catch(err){ out=FALLBACK[currentType](raw,today); fallback=true; }
   outputs[currentType]=out; usedFallback[currentType]=fallback;
   syncOutput(); $("outputCard").scrollIntoView({behavior:"smooth",block:"nearest"});
   btn.innerHTML="Generate Smart Notes"; refreshBtn(); }
