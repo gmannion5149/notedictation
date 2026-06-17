@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0064)file:///C:/Users/gerar/Downloads/note-dictation-generator_3.html -->
+<!-- saved from url=(0064)file:///C:/Users/gerar/Downloads/note-dictation-generator_1.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,7 +9,7 @@
 <title>Note Dictation Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
-<link href="./New one_files/css2" rel="stylesheet">
+<link href="./Note Dictation Generator_files/css2" rel="stylesheet">
 <style>
   :root{
     --bg:#0E1014;--glass:rgba(32,36,45,.55);--border:rgba(255,255,255,.09);
@@ -145,6 +145,19 @@
   .spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.35);
     border-top-color:#fff;border-radius:50%;animation:rot .7s linear infinite;vertical-align:-2px;margin-right:8px;}
   @keyframes rot{to{transform:rotate(360deg)}}
+
+  #printArea{display:none;}
+  @media print{
+    body{background:#fff !important;}
+    body>*{display:none !important;}
+    #printArea{display:block !important;color:#000;font-family:'Times New Roman',Times,serif;
+      font-size:12pt;line-height:1.5;margin:0;}
+    #printArea .lbl{font-weight:bold;text-decoration:underline;}
+    #printArea .row{margin:1px 0;}
+    #printArea .bul{margin:1px 0 1px 18px;}
+    #printArea .sum{margin-bottom:9px;}
+    #printArea .sp{height:8px;}
+  }
 </style>
 </head>
 <body>
@@ -194,8 +207,10 @@
     <h3 id="outTitle">Formatted Note</h3>
     <div class="note-out" id="noteOut"></div>
     <div class="fb-note" id="fbNote">// auto-structured on-device · AI formatting was unavailable</div>
+    <button class="btn btn-led" id="copyBtn">Copy for Clio</button>
     <div class="copy-row">
-      <button class="btn btn-led" id="copyBtn">Copy for Clio</button>
+      <button class="btn btn-ghost" id="printBtn">Print</button>
+      <button class="btn btn-ghost" id="saveBtn">Download</button>
       <button class="btn btn-ghost" id="reformatBtn">Redo</button>
     </div>
   </div>
@@ -238,6 +253,7 @@ const INTAKE_SKELETON=[
 ].join("\n");
 
 const OMIT_RULE="- Include a label or section ONLY if the dictation provides information for it. Omit any label or section with no information; never output a dash or an empty heading.\n";
+const COND_RULE="- Only include a \"PMM:\" section if the dictation explicitly asks for a note for Paula (e.g., \"note for Paula\", \"add a note for Paula\"). Use a heading line \"PMM:\" followed by each note as a \"\u2022 \" bullet. Never add a PMM section otherwise.\n"+"- Only include a \"Notes for Client:\" section if the dictation explicitly says to send the client a note (e.g., \"send to client and include the following note\" or a clear variation). Use \"Notes for Client:\" followed by the message as a \"\u2022 \" bullet. Never add it otherwise.\n";
 
 function todayStr(){ return new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}); }
 
@@ -254,7 +270,7 @@ function intakePrompt(raw,today){
     +"- Keep the spaced em dash \" \u2014 \" connector in the Caller, CDL, Fast Track, and prior lines when present.\n"
     +"- Aggravating Factors may only restate facts actually stated (e.g., a reading of .16 or more, a child in the vehicle). Never invent factors.\n"
     +"- Do not invent names, charges, numbers, dollar amounts, or legal conclusions.\n"
-    +"- The Details bullet is a tight, professional summary of the client's account.\n\n"
+    +"- The Details bullet is a tight, professional summary of the client's account.\n"+COND_RULE+"\n"
     +"RAW DICTATION:\n\"\"\""+raw+"\"\"\"";
 }
 function courtPrompt(raw,today){
@@ -266,15 +282,13 @@ function courtPrompt(raw,today){
     +"Judge: [name]\nProsecutor: [name]\n"
     +"Offer:\n\u2022 [each offer term as its own bullet]\n"
     +"Details:\n\u2022 [what happened at the hearing, clean professional prose]\n"
-    +"Next Court Date: [Date] \u2014 [Hearing type]\n"
-    +"Notes for Paula:\n\u2022 [any instructions for the assistant]\n"
-    +"Notes for Client:\n\u2022 [any message to relay to the client]\n\nRULES:\n"
+    +"Next Court Date: [Date] \u2014 [Hearing type]\n\nRULES:\n"
     +"- Plain text only. No markdown, asterisks, or backticks.\n"+OMIT_RULE
     +"- The note MUST start with the opening line beginning \"GWM appeared\". Use \"with Client\" or \"without Client\" exactly as the dictation indicates; if it is not stated, write \"with Client\".\n"
     +"- The opening line always ends with \"on "+today+".\" If the hearing type is stated, append it as: \"GWM appeared with Client on "+today+" for the [Hearing type].\"\n"
     +"- Keep the spaced em dash \" \u2014 \" in the Next Court Date line.\n"
     +"- Write each offer term and each instruction as its own bullet beginning with \"\u2022 \".\n"
-    +"- Use only stated facts; never invent names, dates, offer terms, or amounts.\n\n"
+    +"- Use only stated facts; never invent names, dates, offer terms, or amounts.\n"+COND_RULE+"\n"
     +"RAW DICTATION:\n\"\"\""+raw+"\"\"\"";
 }
 function checkinPrompt(raw,today){
@@ -291,7 +305,7 @@ function checkinPrompt(raw,today){
     +"- Plain text only. No markdown, asterisks, or backticks.\n"+OMIT_RULE
     +"- The note MUST start with the opening line beginning \"GWM met with Client\". Insert the meeting medium exactly as stated: \"by phone\", \"in person\", or \"by Zoom\". If not stated, omit the medium.\n"
     +"- The opening line always ends with \"on "+today+".\"\n"
-    +"- Use only stated facts; never invent.\n\n"
+    +"- Use only stated facts; never invent.\n"+COND_RULE+"\n"
     +"RAW DICTATION:\n\"\"\""+raw+"\"\"\"";
 }
 const PROMPT={intake:intakePrompt,court:courtPrompt,checkin:checkinPrompt};
@@ -467,6 +481,30 @@ async function copyOut(){ const text=outputs[currentType]; if(!text) return;
       document.body.removeChild(tmp); } } }
 $("copyBtn").addEventListener("click",copyOut);
 
+/* ---------- Print / Download ---------- */
+function fileName(){ const d=new Date().toISOString().slice(0,10);
+  return TITLES[currentType].replace(/[^A-Za-z]+/g,"-").replace(/(^-|-$)/g,"")+"-"+d; }
+function printNote(){ if(!outputs[currentType]) return;
+  $("printArea").innerHTML=renderNote(outputs[currentType]).disp;
+  const t=document.title; document.title=fileName();
+  window.print(); setTimeout(()=>{document.title=t;},600); }
+async function saveNote(){ const text=outputs[currentType]; if(!text) return;
+  const fn=fileName()+".txt";
+  try{ const file=new File([text],fn,{type:"text/plain"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:fileName()}); return; }
+  }catch(_){}
+  try{
+    const blob=new Blob([text],{type:"text/plain"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=fn;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    showToast("Saved \u00b7 "+fn);
+  }catch(e){ showToast("Couldn't save; use Print instead"); } }
+$("printBtn").addEventListener("click",printNote);
+$("saveBtn").addEventListener("click",saveNote);
+
 /* ---------- Toast ---------- */
 let toastT;
 function showToast(m){ const el=$("toast"); el.textContent=m; el.classList.add("show");
@@ -474,6 +512,7 @@ function showToast(m){ const el=$("toast"); el.textContent=m; el.classList.add("
 
 refreshBtn();
 </script>
+<div id="printArea" aria-hidden="true"></div>
 
 
 </body></html>
